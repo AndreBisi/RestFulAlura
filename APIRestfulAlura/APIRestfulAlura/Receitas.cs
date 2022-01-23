@@ -11,7 +11,7 @@ namespace APIRestfulAlura
 
         public decimal Valor { get; set; }
 
-        public DateTime DataReceita { get; set; }
+        public DateTime Data { get; set; }
 
     }
 

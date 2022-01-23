@@ -15,23 +15,8 @@ namespace APIRestfulAlura.Controllers
     [Route("[controller]")]
     public class DespesasController : ControllerBase
     {
-
-        [HttpGet(Name = "GetDespesas")]
-        public IEnumerable<Despesas> Get()
-        {
-            var rng = new Random();
-            return Enumerable.Range(1, 5).Select(index => new Despesas
-            {
-                Id = 1,
-                Descricao = "Descrição",
-                Valor = 0,
-                DataReceita = DateTime.Now
-            })
-            .ToArray();
-        }
-
-        [HttpPost]
-        public void Post([FromBody]Despesas despesa)
+        [HttpGet]
+        public IActionResult GetPorId(int codigo)
         {
             try
             {
@@ -39,12 +24,113 @@ namespace APIRestfulAlura.Controllers
                 {
                     //Abra a conexão com o PgSQL                  
                     pgsqlConnection.Open();
-                    
-                    string cmdInserir = String.Format("Insert Into tbDespesa values({0},'{1}',{2}, '{3}')", despesa.Id, despesa.Descricao, despesa.Valor, despesa.DataReceita.ToString("dd/MM/yyyy"));
 
-                    using (NpgsqlCommand pgsqlcommand = new NpgsqlCommand(cmdInserir, pgsqlConnection))
+                    string cmdSequence = "select * from tbDespesa where despesaId = " + codigo;
+
+                    using (NpgsqlCommand pgsqlcommand = new NpgsqlCommand(cmdSequence, pgsqlConnection))
                     {
-                        pgsqlcommand.ExecuteNonQuery();
+
+                        NpgsqlDataReader reader = pgsqlcommand.ExecuteReader();
+
+                        while (reader.Read())
+                        {
+                            Despesas despesa = new Despesas();
+                            despesa.Id = reader.GetInt32(0);
+                            despesa.Descricao = reader.GetString(1);
+                            despesa.Valor = reader.GetDecimal(2);
+                            despesa.Data = reader.GetDateTime(3);
+                            return Ok(despesa);
+
+                        }
+                        return NotFound();
+                    }
+                }
+
+            }
+            catch (NpgsqlException ex)
+            {
+                throw ex;
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+            finally
+            {
+                //pgsqlConnection.Close();
+            }
+
+        }
+        private bool validaDados(Despesas despesa)
+        {
+            try
+            {
+                using (NpgsqlConnection pgsqlConnection = new NpgsqlConnection("Server = 127.0.0.1; Port = 5432; Database = DBAlura; User Id = postgres; Password = porcos128;"))
+                {
+                    //Abra a conexão com o PgSQL                  
+                    pgsqlConnection.Open();
+
+                    string cmdSequence = String.Format("select * from tbdespesa where despesaDesc = '{0}' and   extract(month from despesaData ) = {1} and   extract(year from despesaData ) = {2} and despesaId <> {3}", despesa.Descricao, despesa.Data.Month, despesa.Data.Year, despesa.Id);
+
+                    using (NpgsqlCommand pgsqlcommand = new NpgsqlCommand(cmdSequence, pgsqlConnection))
+                    {
+
+                        NpgsqlDataReader reader = pgsqlcommand.ExecuteReader();
+
+                        if (reader.HasRows)
+                        {
+                            return false;
+                        }
+                        else
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+            catch (NpgsqlException ex)
+            {
+                throw ex;
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+            finally
+            {
+                //pgsqlConnection.Close();
+            }
+
+        }
+
+        private int getCodigo()
+        {
+            try
+            {
+                using (NpgsqlConnection pgsqlConnection = new NpgsqlConnection("Server = 127.0.0.1; Port = 5432; Database = DBAlura; User Id = postgres; Password = porcos128;"))
+                {
+                    //Abra a conexão com o PgSQL                  
+                    pgsqlConnection.Open();
+
+                    string cmdSequence = "select nextval('sqdespesa');";
+
+                    using (NpgsqlCommand pgsqlcommand = new NpgsqlCommand(cmdSequence, pgsqlConnection))
+                    {
+
+                        NpgsqlDataReader reader = pgsqlcommand.ExecuteReader();
+
+                        if (reader.HasRows)
+                        {
+                            while (reader.Read())
+                            {
+                                return reader.GetInt32(0);
+                            }
+                            return 1;
+                        }
+                        else
+                        {
+                            return 1;
+                        }
                     }
                 }
             }
@@ -61,5 +147,99 @@ namespace APIRestfulAlura.Controllers
                 //pgsqlConnection.Close();
             }
         }
+
+
+        [HttpPut]
+        public IActionResult Put([FromBody] Despesas despesa)
+        {
+            if (validaDados(despesa))
+            {
+                try
+                {
+                    using (NpgsqlConnection pgsqlConnection = new NpgsqlConnection("Server = 127.0.0.1; Port = 5432; Database = DBAlura; User Id = postgres; Password = porcos128;"))
+                    {
+
+                        //Abra a conexão com o PgSQL                  
+                        pgsqlConnection.Open();
+
+                        string cmdInserir = String.Format("update tbDespesa set despesaDesc = '{0}', despesaValor = {1}, despesaData = '{2}' where despesaId = {3}", despesa.Descricao, despesa.Valor, despesa.Data.ToString("dd/MM/yyyy"), despesa.Id);
+
+                        using (NpgsqlCommand pgsqlcommand = new NpgsqlCommand(cmdInserir, pgsqlConnection))
+                        {
+                            pgsqlcommand.ExecuteNonQuery();
+                            return CreatedAtAction(nameof(despesa), new { Id = despesa.Id }, despesa);
+                        }
+                    }
+                }
+                catch (NpgsqlException ex)
+                {
+                    throw ex;
+                }
+                catch (Exception ex)
+                {
+                    throw ex;
+                }
+                finally
+                {
+                    //pgsqlConnection.Close();
+                }
+
+            }
+            else
+            {
+                throw new Exception("Já existe despesa cadastrada para este mês");
+            }
+        }
+
+        [HttpPost]
+        public IActionResult Post([FromBody] Despesas despesa)
+        {
+
+            if (validaDados(despesa))
+            {
+                try
+                {
+                    using (NpgsqlConnection pgsqlConnection = new NpgsqlConnection("Server = 127.0.0.1; Port = 5432; Database = DBAlura; User Id = postgres; Password = porcos128;"))
+                    {
+
+                        //Abra a conexão com o PgSQL                  
+                        pgsqlConnection.Open();
+
+                        int codigo = getCodigo();
+
+                        System.Console.WriteLine("codigo" + codigo);
+
+                        string cmdInserir = String.Format("Insert Into tbDespesa values({0},'{1}',{2},'{3}')", codigo, despesa.Descricao, despesa.Valor, despesa.Data.ToString("dd/MM/yyyy"));
+
+                        using (NpgsqlCommand pgsqlcommand = new NpgsqlCommand(cmdInserir, pgsqlConnection))
+                        {
+                            pgsqlcommand.ExecuteNonQuery();
+                            return CreatedAtAction(nameof(despesa), new { Id = codigo }, despesa);
+                        }
+                    }
+                }
+                catch (NpgsqlException ex)
+                {
+                    throw ex;
+                }
+                catch (Exception ex)
+                {
+                    throw ex;
+                }
+                finally
+                {
+                    //pgsqlConnection.Close();
+                }
+
+            }
+            else
+            {
+                throw new Exception("Já existe despesa cadastrada para este mês");
+            }
+        }
+
+
     }
+
 }
+

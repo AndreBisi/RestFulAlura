@@ -16,7 +16,7 @@ namespace APIRestfulAlura
         public decimal Valor { get; set; }
 
         [Required(ErrorMessage = "A data deve ser informada")]
-        public DateTime DataReceita { get; set; }
+        public DateTime Data { get; set; }
 
     }
 }
