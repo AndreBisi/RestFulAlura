@@ -15,8 +15,9 @@ namespace APIRestfulAlura.Controllers
     [Route("[controller]")]
     public class DespesasController : ControllerBase
     {
+
         [HttpGet]
-        public IActionResult GetPorId(int codigo)
+        public ActionResult<List<Despesas>> GetLista()
         {
             try
             {
@@ -25,7 +26,55 @@ namespace APIRestfulAlura.Controllers
                     //Abra a conexão com o PgSQL                  
                     pgsqlConnection.Open();
 
-                    string cmdSequence = "select * from tbDespesa where despesaId = " + codigo;
+                    string cmdSequence = "select * from tbDespesa order by despesaId";
+
+                    using (NpgsqlCommand pgsqlcommand = new NpgsqlCommand(cmdSequence, pgsqlConnection))
+                    {
+                        NpgsqlDataReader reader = pgsqlcommand.ExecuteReader();
+
+                        var lista = new List<Despesas>();
+
+                        while (reader.Read())
+                        {
+                            Despesas despesa = new Despesas();
+                            despesa.Id = reader.GetInt32(0);
+                            despesa.Descricao = reader.GetString(1);
+                            despesa.Valor = reader.GetDecimal(2);
+                            despesa.Data = reader.GetDateTime(3);
+
+                            lista.Add(despesa);
+                        }
+                        return lista.ToList();
+                    }
+                }
+
+            }
+            catch (NpgsqlException ex)
+            {
+                throw ex;
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+            finally
+            {
+                //pgsqlConnection.Close();
+            }
+
+        }
+
+        [HttpGet("{Id}")]
+        public IActionResult GetPorId(int Id)
+        {
+            try
+            {
+                using (NpgsqlConnection pgsqlConnection = new NpgsqlConnection("Server = 127.0.0.1; Port = 5432; Database = DBAlura; User Id = postgres; Password = porcos128;"))
+                {
+                    //Abra a conexão com o PgSQL                  
+                    pgsqlConnection.Open();
+
+                    string cmdSequence = "select * from tbDespesa where despesaId = " + Id;
 
                     using (NpgsqlCommand pgsqlcommand = new NpgsqlCommand(cmdSequence, pgsqlConnection))
                     {
@@ -63,9 +112,9 @@ namespace APIRestfulAlura.Controllers
         }
         private bool validaDados(Despesas despesa)
         {
-            try
+            using (NpgsqlConnection pgsqlConnection = new NpgsqlConnection("Server = 127.0.0.1; Port = 5432; Database = DBAlura; User Id = postgres; Password = porcos128;"))
             {
-                using (NpgsqlConnection pgsqlConnection = new NpgsqlConnection("Server = 127.0.0.1; Port = 5432; Database = DBAlura; User Id = postgres; Password = porcos128;"))
+                try
                 {
                     //Abra a conexão com o PgSQL                  
                     pgsqlConnection.Open();
@@ -86,21 +135,22 @@ namespace APIRestfulAlura.Controllers
                             return true;
                         }
                     }
-                }
-            }
-            catch (NpgsqlException ex)
-            {
-                throw ex;
-            }
-            catch (Exception ex)
-            {
-                throw ex;
-            }
-            finally
-            {
-                //pgsqlConnection.Close();
-            }
 
+                }
+                catch (NpgsqlException ex)
+                {
+                    throw ex;
+                }
+                catch (Exception ex)
+                {
+                    throw ex;
+                }
+                finally
+                {
+                    pgsqlConnection.Close();
+                }
+
+            }
         }
 
         private int getCodigo()
@@ -191,6 +241,40 @@ namespace APIRestfulAlura.Controllers
             }
         }
 
+        [HttpDelete]
+        public IActionResult Delete(int Id)
+        {
+            try
+            {
+                using (NpgsqlConnection pgsqlConnection = new NpgsqlConnection("Server = 127.0.0.1; Port = 5432; Database = DBAlura; User Id = postgres; Password = porcos128;"))
+                {
+
+                    //Abra a conexão com o PgSQL                  
+                    pgsqlConnection.Open();
+
+                    string cmdInserir = String.Format("delete from tbDespesa where despesaId = {0}", Id);
+
+                    using (NpgsqlCommand pgsqlcommand = new NpgsqlCommand(cmdInserir, pgsqlConnection))
+                    {
+                        pgsqlcommand.ExecuteNonQuery();
+                        return NoContent();
+                    }
+                }
+            }
+            catch (NpgsqlException ex)
+            {
+                throw ex;
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+            finally
+            {
+                //pgsqlConnection.Close();
+            }
+        }
+
         [HttpPost]
         public IActionResult Post([FromBody] Despesas despesa)
         {
@@ -214,7 +298,8 @@ namespace APIRestfulAlura.Controllers
                         using (NpgsqlCommand pgsqlcommand = new NpgsqlCommand(cmdInserir, pgsqlConnection))
                         {
                             pgsqlcommand.ExecuteNonQuery();
-                            return CreatedAtAction(nameof(despesa), new { Id = codigo }, despesa);
+                            return Ok(despesa);
+                            //return CreatedAtAction(nameof(despesa), new { Id = codigo }, despesa);
                         }
                     }
                 }
@@ -237,9 +322,5 @@ namespace APIRestfulAlura.Controllers
                 throw new Exception("Já existe despesa cadastrada para este mês");
             }
         }
-
-
     }
-
 }
-
