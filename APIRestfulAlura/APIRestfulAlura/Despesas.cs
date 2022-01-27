@@ -18,5 +18,7 @@ namespace APIRestfulAlura
         [Required(ErrorMessage = "A data deve ser informada")]
         public DateTime Data { get; set; }
 
+        public String Categoria { get; set; }
+
     }
 }
